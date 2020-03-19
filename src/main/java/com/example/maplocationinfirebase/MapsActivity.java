@@ -1,7 +1,6 @@
 package com.example.maplocationinfirebase;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
@@ -14,12 +13,14 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
+import com.example.maplocationinfirebase.model.MyLocation;
+import com.example.maplocationinfirebase.repo.FirebaseRepo;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -55,9 +56,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         listener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                Log.i("all", "new location " + location);
+                //  Log.i("all", "new location " + location);
                 // move (map) camera to this location
-                moveCamera(location.getLatitude(), location.getLongitude());
+                addMarker(location.getLatitude(), location.getLongitude());
             }
 
             @Override
@@ -97,15 +98,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        moveCamera(55.7, 12.5);
+        // wait to start Firebase listener, until we have a map!
+        FirebaseRepo.setMapsActivity(this);  // this will start the FB listener
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+                Log.i("all", "long press " + latLng);
+                // 1. call our FirebaseRepo class, and ask for add method
+                FirebaseRepo.addMarker(latLng.latitude + "", latLng.longitude + "");
+            }
+        });
 
     }
 
-    private void moveCamera(double lat, double lon) {
+    private void addMarker(double lat, double lon) {
         // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(lat, lon);
+        LatLng marker = new LatLng(lat, lon);
+        mMap.addMarker(new MarkerOptions().position(marker).title("Marker"));
+        // mMap.moveCamera(CameraUpdateFactory.newLatLng(marker));
+    }
+
+    public void updateMarkers(){  // call this method from FirebaseRepo, when the listener gets data.
         mMap.clear();
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        for(MyLocation location : FirebaseRepo.locations){
+            addMarker(location.getLat(), location.getLon());
+        }
     }
 }
